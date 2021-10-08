@@ -1,0 +1,319 @@
+---
+apiVersion: xl-deploy/v1
+kind: Applications
+spec:
+- directory: Applications/PortfolioA35
+  children:
+  - name: Applications/PortfolioA35/Provisioning
+    type: udm.Application
+    lastVersion: 0.0.5
+    children:
+    - name: 0.0.5
+      type: udm.DeploymentPackage
+      deployables:
+      - name: tf-eks
+        type: terraform.Module
+        environmentPath: Environments/PortfolioA35/DEV
+        automaticDictionary: "false"
+        generateCIsFromResources: "true"
+        file: !file "artifacts/Applications/PortfolioA35/Provisioning/0.0.5/tf-eks/eks.zip"
+---
+apiVersion: xl-deploy/v1
+kind: Infrastructure
+spec:
+- directory: Infrastructure/PortfolioA35
+  children:
+  - directory: DEV
+    children:
+    - name: AppServer
+      type: overthere.SshHost
+      tags:
+      - appserver
+      os: UNIX
+      temporaryDirectoryPath: /tmp
+      connectionType: SCP
+      address: jboss1
+      username: root
+      password: xebialabs
+      children:
+      - name: JBoss
+        type: jbossdm.StandaloneServer
+        home: /opt/wildfly
+        port: 9990
+    - name: Database
+      type: overthere.SshHost
+      tags:
+      - dbserver
+      os: UNIX
+      temporaryDirectoryPath: /tmp
+      connectionType: SCP
+      address: mysql1
+      username: root
+      password: xebialabs
+      children:
+      - name: MySql
+        type: sql.MySqlClient
+        username: root
+        password: secret
+        mySqlHome: /usr
+        databaseName: mysql
+  - directory: PROD
+    children:
+    - name: EKS
+      type: k8s.Master
+      apiServerURL: !format https://%clusterIp%
+      skipTLS: true
+      username: admin
+      children:
+      - name: eks-us-east-1
+        type: k8s.Namespace
+        namespaceName: !format xl-demo-%buildNumber%
+    - name: AppServer
+      type: overthere.SshHost
+      tags:
+      - appserver
+      os: UNIX
+      temporaryDirectoryPath: /tmp
+      connectionType: SCP
+      address: jboss3
+      username: root
+      password: xebialabs
+      children:
+      - name: JBoss
+        type: jbossdm.StandaloneServer
+        home: /opt/wildfly
+        port: 9990
+    - name: Database
+      type: overthere.SshHost
+      tags:
+      - dbserver
+      os: UNIX
+      temporaryDirectoryPath: /tmp
+      connectionType: SCP
+      address: mysql3
+      username: root
+      password: xebialabs
+      children:
+      - name: MySql
+        type: sql.MySqlClient
+        username: root
+        password: secret
+        mySqlHome: /usr
+        databaseName: mysql
+    - name: GKE-EMEA
+      type: k8s.Master
+      apiServerURL: !format https://%clusterIp%
+      skipTLS: true
+      username: admin
+      children:
+      - name: gke-europe-west1
+        type: k8s.Namespace
+        namespaceName: !format xl-demo-%buildNumber%-emea
+    - name: GKE-USA
+      type: k8s.Master
+      apiServerURL: !format https://%clusterIp%
+      skipTLS: true
+      username: admin
+      children:
+      - name: gke-us-east4
+        type: k8s.Namespace
+        namespaceName: !format xl-demo-%buildNumber%-usa
+  - directory: QA
+    children:
+    - name: GKE
+      type: k8s.Master
+      apiServerURL: !format https://%clusterIp%
+      skipTLS: true
+      username: admin
+      children:
+      - name: gke-us-east4
+        type: k8s.Namespace
+        namespaceName: !format xl-demo-%buildNumber%-qa
+    - name: Database
+      type: overthere.SshHost
+      tags:
+      - dbserver
+      os: UNIX
+      temporaryDirectoryPath: /tmp
+      connectionType: SCP
+      address: mysql2
+      username: root
+      password: xebialabs
+      children:
+      - name: MySql
+        type: sql.MySqlClient
+        username: root
+        password: secret
+        mySqlHome: /usr
+        databaseName: mysql
+    - name: AppServer
+      type: overthere.SshHost
+      tags:
+      - appserver
+      os: UNIX
+      temporaryDirectoryPath: /tmp
+      connectionType: SCP
+      address: jboss2
+      username: root
+      password: xebialabs
+      children:
+      - name: JBoss
+        type: jbossdm.StandaloneServer
+        home: /opt/wildfly
+        port: 9990
+  - directory: DR
+    children:
+    - name: DataCenterK8s
+      type: k8s.Master
+      apiServerURL: !format https://%clusterIp%
+      skipTLS: true
+      username: admin
+      children:
+      - name: portfolio-a35
+        type: k8s.Namespace
+        namespaceName: !format xl-demo-%buildNumber%-dr
+    - name: Database
+      type: overthere.SshHost
+      tags:
+      - dbserver
+      os: UNIX
+      temporaryDirectoryPath: /tmp
+      connectionType: SCP
+      address: mysql-dr
+      username: root
+      password: xebialabs
+      children:
+      - name: MySql
+        type: sql.MySqlClient
+        username: root
+        password: secret
+        mySqlHome: /usr
+        databaseName: mysql
+    - name: AppServer
+      type: overthere.SshHost
+      tags:
+      - appserver
+      os: UNIX
+      temporaryDirectoryPath: /tmp
+      connectionType: SCP
+      address: jboss-dr
+      username: root
+      password: xebialabs
+      children:
+      - name: JBoss
+        type: jbossdm.StandaloneServer
+        home: /opt/wildfly
+        port: 9990
+    - name: OpenShift
+      type: openshift.Server
+      serverUrl: https://api.pro-us-east-1.openshift.com
+      openshiftToken: nV9YkAYGAasOv0FSAVTv55UUzMQdrfGonUmwMMrNHUc
+      verifyCertificates: false
+  - name: Terraform
+    type: overthere.SshHost
+    os: UNIX
+    connectionType: SCP
+    address: cli
+    username: xebialabs
+    password: tra3fik
+    suUsername: xebialabs
+    suPassword: tra3fik
+    children:
+    - name: Client
+      type: terraform.TerraformClient
+      path: /home/xebialabs
+      workingDirectory: /home/xebialabs
+---
+apiVersion: xl-deploy/v1
+kind: Environments
+spec:
+- directory: Environments/PortfolioA35
+  children:
+  - name: Terraform
+    type: udm.Environment
+    members:
+    - Infrastructure/PortfolioA35/Terraform/Client
+  - name: DEV
+    type: udm.Environment
+    members:
+    - Infrastructure/PortfolioA35/DEV/Database/MySql
+    - Infrastructure/PortfolioA35/DEV/AppServer/JBoss
+    dictionaries:
+    - Environments/PortfolioA35/Dictionaries/DEV-Dict
+  - name: PROD
+    type: udm.Environment
+    members:
+    - Infrastructure/PortfolioA35/PROD/GKE-EMEA/gke-europe-west1
+    - Infrastructure/PortfolioA35/PROD/GKE-USA/gke-us-east4
+    - Infrastructure/PortfolioA35/PROD/AppServer/JBoss
+    - Infrastructure/PortfolioA35/PROD/Database/MySql
+    dictionaries:
+    - Environments/PortfolioA35/Dictionaries/PROD-Dict
+  - name: CANARY
+    type: udm.Environment
+    members:
+    - Infrastructure/PortfolioA35/PROD/EKS/eks-us-east-1
+    dictionaries:
+    - Environments/PortfolioA35/Dictionaries/PROD-Dict
+  - name: QA
+    type: udm.Environment
+    members:
+    - Infrastructure/PortfolioA35/QA/Database/MySql
+    - Infrastructure/PortfolioA35/QA/AppServer/JBoss
+    - Infrastructure/PortfolioA35/QA/GKE/gke-us-east4
+    dictionaries:
+    - Environments/PortfolioA35/Dictionaries/QA-Dict
+  - name: DR
+    type: udm.Environment
+    members:
+    - Infrastructure/PortfolioA35/DR/Database/MySql
+    - Infrastructure/PortfolioA35/DR/AppServer/JBoss
+    - Infrastructure/PortfolioA35/DR/DataCenterK8s/portfolio-a35
+    dictionaries:
+    - Environments/PortfolioA35/Dictionaries/DR-Dict
+  - directory: Environments/PortfolioA35/Dictionaries
+    children:
+    - name: QA-Dict
+      type: udm.Dictionary
+      entries:
+        DB_USERNAME: xebialabs
+        APPSERVER_PORT: "8080"
+        DB_DRIVER: mysql-connector-java-5.1.40-bin.jar_com.mysql.jdbc.Driver_5_1
+        APPSERVER_HOST: jboss2
+        DB_URL: jdbc:mysql:@localhost:mysql2
+        CONTEXT_ROOT: payments
+      encryptedEntries:
+        DB_PASSWORD: secret
+    - name: PROD-Dict
+      type: udm.Dictionary
+      entries:
+        DB_USERNAME: xebialabs
+        APPSERVER_PORT: "8080"
+        DB_DRIVER: mysql-connector-java-5.1.40-bin.jar_com.mysql.jdbc.Driver_5_1
+        APPSERVER_HOST: jboss3
+        DB_URL: jdbc:mysql:@localhost:mysql3
+        CONTEXT_ROOT: payments
+      encryptedEntries:
+        DB_PASSWORD: secret
+    - name: DEV-Dict
+      type: udm.Dictionary
+      entries:
+        DB_USERNAME: xebialabs
+        APPSERVER_PORT: "8080"
+        DB_DRIVER: mysql-connector-java-5.1.40-bin.jar_com.mysql.jdbc.Driver_5_1
+        APPSERVER_HOST: jboss1
+        DB_URL: jdbc:mysql:@localhost:mysql1
+        CONTEXT_ROOT: payments-bak
+      encryptedEntries:
+        DB_PASSWORD: secret
+    - name: DR-Dict
+      type: udm.Dictionary
+      entries:
+        DB_USERNAME: xebialabs
+        APPSERVER_PORT: "8080"
+        DB_DRIVER: mysql-connector-java-5.1.40-bin.jar_com.mysql.jdbc.Driver_5_1
+        APPSERVER_HOST: jboss1
+        DB_URL: jdbc:mysql:@localhost:mysql-dr
+        CONTEXT_ROOT: payments-bak
+      encryptedEntries:
+        DB_PASSWORD: secret
