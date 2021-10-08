@@ -1,0 +1,17 @@
+---
+apiVersion: xl-deploy/v1
+kind: Configuration
+spec:
+- name: Configuration/vault
+  type: secrets.hashicorp.vault.Server
+  serverAddress: http://vault:8200
+  token: xebialabs
+---
+apiVersion: xl-deploy/v1
+kind: Configuration
+spec:
+- name: Configuration/vault-lookup-value-provider
+  type: secrets.hashicorp.vault.LookupValueProvider
+  vaultServer: Configuration/vault
+  secretPaths:
+  - secret/gke
